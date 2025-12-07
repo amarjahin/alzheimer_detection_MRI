@@ -29,61 +29,6 @@ def _get_class_images(class_dir):
         return []
     return list(class_dir.glob('*.jpg'))
 
-def calculate_adaptive_fractions(data_dir, split='train', base_fraction=1.0, random_seed=42):
-    """Calculate adaptive fractions for each class based on their sizes.
-    
-    Classes with more samples get reduced more, classes with fewer samples get reduced less.
-    This helps balance the dataset.
-    
-    Args:
-        data_dir: Path to dataset directory
-        split: 'train' or 'val'
-        base_fraction: Base fraction to use (controls overall reduction)
-        random_seed: Random seed for reproducibility
-    
-    Returns:
-        Dictionary mapping class names to their sampling fractions
-    """
-    data_path = Path(data_dir) / split
-    class_counts = {}
-    
-    # Count images in each class
-    for class_name in CLASSES:
-        class_dir = data_path / class_name
-        class_counts[class_name] = len(_get_class_images(class_dir))
-    
-    # Find min and max counts (excluding zeros)
-    non_zero_counts = [count for count in class_counts.values() if count > 0]
-    if len(non_zero_counts) == 0:
-        return {class_name: 1.0 for class_name in CLASSES}
-    
-    min_count = min(non_zero_counts)
-    max_count = max(non_zero_counts)
-    
-    # Calculate adaptive fractions
-    # Strategy: Use inverse frequency weighting
-    # Larger classes get smaller fractions, smaller classes get larger fractions
-    fractions = {}
-    for class_name, count in class_counts.items():
-        if count == 0:
-            fractions[class_name] = 1.0
-        else:
-            # Normalize count to [0, 1] range
-            if max_count > min_count:
-                # Inverse frequency: (max - count) / (max - min) gives higher value for smaller classes
-                normalized = (max_count - count) / (max_count - min_count)
-                # Scale to range [base_fraction * min_frac, base_fraction]
-                # Smaller classes get closer to base_fraction, larger classes get more reduced
-                min_frac = 0.3  # Minimum fraction for largest class (controls how much to reduce large classes)
-                class_fraction = base_fraction * (min_frac + (1 - min_frac) * normalized)
-            else:
-                # All classes have same size
-                class_fraction = base_fraction
-            
-            fractions[class_name] = min(1.0, class_fraction)
-    
-    return fractions
-
 def extract_patient_number(filename):
     """Extract patient number from filename like OAS1_0001_MR1_mpr-1_100.jpg"""
     match = re.search(r'OAS1_(\d{4})_', filename)
@@ -95,7 +40,7 @@ class AlzheimerDataset(Dataset):
     """Dataset class for Alzheimer's MRI images"""
     
     def __init__(self, data_dir, split='train', transform=None, data_fraction=1.0, 
-                 adaptive_sampling=True, patient_fraction=None, random_seed=42):
+                 patient_fraction=None, random_seed=42):
         self.data_dir = Path(data_dir) / split
         self.transform = transform
         self.images = []
@@ -112,13 +57,7 @@ class AlzheimerDataset(Dataset):
                 data_fraction
             )
         else:
-            # Original class-based sampling
-            # Calculate per-class fractions if using adaptive sampling
-            if adaptive_sampling and data_fraction < 1.0:
-                class_fractions = calculate_adaptive_fractions(data_dir, split, data_fraction, random_seed)
-            else:
-                class_fractions = {class_name: data_fraction for class_name in CLASSES}
-            
+            # Uniform class-based sampling
             # Load all images and their labels
             for class_idx, class_name in enumerate(CLASSES):
                 class_dir = self.data_dir / class_name
@@ -128,30 +67,15 @@ class AlzheimerDataset(Dataset):
                 if not class_images:
                     continue
                 
-                # Get fraction for this class
-                class_fraction = class_fractions.get(class_name, data_fraction)
-                
-                # If using a fraction, randomly sample
-                if class_fraction < 1.0:
-                    num_samples = min(max(1, int(len(class_images) * class_fraction)), len(class_images))
+                # If using a fraction, randomly sample uniformly
+                if data_fraction < 1.0:
+                    num_samples = min(max(1, int(len(class_images) * data_fraction)), len(class_images))
                     class_images = random.sample(class_images, num_samples)
                 
                 # Add to dataset
                 for img_file in class_images:
                     self.images.append(str(img_file))
                     self.labels.append(class_idx)
-            
-            # Print sampling info if using adaptive sampling
-            if adaptive_sampling and data_fraction < 1.0:
-                print(f"\nAdaptive sampling fractions for {split} set:")
-                for class_name in CLASSES:
-                    if class_name in class_fractions:
-                        class_dir = self.data_dir / class_name
-                        total = len(_get_class_images(class_dir))
-                        if total > 0:
-                            sampled = sum(1 for label in self.labels if CLASSES[label] == class_name)
-                            frac = class_fractions[class_name]
-                            print(f"  {class_name:25s}: {frac:.3f} ({sampled:5d}/{total:5d} images)")
     
     def _load_with_patient_sampling(self, patient_fraction, image_fraction=1.0):
         """Load data by sampling a fraction of patients uniformly across all classes, then sampling a fraction of images from selected patients
@@ -249,8 +173,7 @@ class AlzheimerDataset(Dataset):
         
         return image, label
 
-def get_data_loaders(batch_size=32, num_workers=4, data_fraction=1.0, adaptive_sampling=True, 
-                     patient_fraction=None):
+def get_data_loaders(batch_size=32, num_workers=4, data_fraction=1.0, patient_fraction=None):
     """Create train and validation data loaders
     
     Args:
@@ -258,8 +181,7 @@ def get_data_loaders(batch_size=32, num_workers=4, data_fraction=1.0, adaptive_s
         num_workers: Number of worker processes for data loading
         data_fraction: Fraction of images to use (0.0 to 1.0). 
             - If patient_fraction is set: fraction of images from each selected patient
-            - Otherwise: base fraction of data to use (random sampling across all images)
-        adaptive_sampling: If True, larger classes are reduced more than smaller classes (ignored if patient_fraction is set)
+            - Otherwise: uniform fraction of data to use (random sampling across all images)
         patient_fraction: Fraction of patients to sample uniformly across all classes (0.0 to 1.0).
             If set, samples that fraction of patients per class, then uses data_fraction of images from each.
             Set to 1.0 to keep all patients and sample images from each.
@@ -285,7 +207,6 @@ def get_data_loaders(batch_size=32, num_workers=4, data_fraction=1.0, adaptive_s
     # Create datasets (use different seeds for train/val to get different samples)
     dataset_kwargs = {
         'data_fraction': data_fraction,
-        'adaptive_sampling': adaptive_sampling,
         'patient_fraction': patient_fraction
     }
     
@@ -514,19 +435,11 @@ def validate(model, val_loader, criterion, device, verbose=False):
         # Average confidence
         avg_confidence = all_probs.max(axis=1).mean()
         print(f"\n  Average prediction confidence: {avg_confidence:.4f}")
-        
-        # Check if model is predicting mostly one class
-        unique, counts = np.unique(all_preds, return_counts=True)
-        max_class_pct = (counts.max() / len(all_preds)) * 100
-        if max_class_pct > 80:
-            print(f"  WARNING: Model is predicting {max_class_pct:.1f}% of samples as one class!")
-            print(f"           This suggests class imbalance issues.")
     
     return epoch_loss, epoch_acc, all_preds, all_labels
 
 def train_model(num_epochs=20, batch_size=32, learning_rate=0.001, data_fraction=1.0,
-                model_name='resnet50', 
-                adaptive_sampling=True, patient_fraction=None,
+                model_name='resnet50', patient_fraction=None,
                 weight_decay=0.0, l1_lambda=0.0, dropout_rate=0.0, label_smoothing=0.0):
     """Main training function
     
@@ -536,8 +449,7 @@ def train_model(num_epochs=20, batch_size=32, learning_rate=0.001, data_fraction
         learning_rate: Initial learning rate
         data_fraction: Fraction of data to use (0.0 to 1.0). 
             - If patient_fraction is set: fraction of images from each selected patient
-            - Otherwise: base fraction of data to use (random sampling)
-        adaptive_sampling: If True, larger classes are reduced more than smaller classes (ignored if patient_fraction is set)
+            - Otherwise: uniform fraction of data to use (random sampling)
         patient_fraction: Fraction of patients to sample uniformly across all classes (0.0 to 1.0).
             If set, samples that fraction of patients per class, then uses data_fraction of images from each.
             Set to 1.0 to keep all patients and sample images from each.
@@ -558,15 +470,10 @@ def train_model(num_epochs=20, batch_size=32, learning_rate=0.001, data_fraction
         if data_fraction < 1.0:
             print(f"Then using {data_fraction*100:.1f}% of images from each selected patient")
     elif data_fraction < 1.0:
-        if adaptive_sampling:
-            print(f"Using adaptive sampling with base fraction {data_fraction*100:.1f}%")
-            print("(Larger classes will be reduced more than smaller classes)")
-        else:
-            print(f"Using {data_fraction*100:.1f}% of the data for faster training")
+        print(f"Using {data_fraction*100:.1f}% of the data for faster training")
     train_loader, val_loader = get_data_loaders(
         batch_size=batch_size, 
         data_fraction=data_fraction,
-        adaptive_sampling=adaptive_sampling,
         patient_fraction=patient_fraction
     )
     print(f"Train samples: {len(train_loader.dataset)}")
@@ -775,12 +682,12 @@ if __name__ == "__main__":
     # DATA_FRACTION: Fraction of images to use
     #   - If PATIENT_FRACTION is set: fraction of images from each selected patient
     #   - Otherwise: base fraction of data to use (random sampling across all images)
-    DATA_FRACTION = 0.05  # Use 1.0 for all data, or set to a fraction (e.g., 0.1 for 10%)
+    DATA_FRACTION = 0.02  # Use 1.0 for all data, or set to a fraction (e.g., 0.1 for 10%)
     
     # ============================================
     # MODEL SELECTION
     # ============================================
-    MODEL_NAME = 'resnet18'  # Change this to try different models
+    MODEL_NAME = 'resnet101'  # Change this to try different models
     
     # ============================================
     # REGULARIZATION CONFIGURATION
@@ -821,4 +728,3 @@ if __name__ == "__main__":
         dropout_rate=DROPOUT_RATE,
         label_smoothing=LABEL_SMOOTHING
     )
-
