@@ -652,7 +652,7 @@ def train_model(num_epochs=20, batch_size=32, learning_rate=0.001, data_fraction
     plt.figure(figsize=(4, 3))
     plt.plot(epochs, train_accs, label='Training Accuracy', linewidth=2, marker='o')
     plt.plot(epochs, val_accs, label='Validation Accuracy', linewidth=2, marker='s')
-    plt.title('With regularization, and class weighting', fontsize=12)
+    plt.title('ResNet101 with regularization', fontsize=12)
     plt.xlabel('Epoch', fontsize=12)
     plt.ylabel('Accuracy', fontsize=12)
     plt.legend(loc='best', fontsize=11)
@@ -682,7 +682,7 @@ if __name__ == "__main__":
     # DATA_FRACTION: Fraction of images to use
     #   - If PATIENT_FRACTION is set: fraction of images from each selected patient
     #   - Otherwise: base fraction of data to use (random sampling across all images)
-    DATA_FRACTION = 0.02  # Use 1.0 for all data, or set to a fraction (e.g., 0.1 for 10%)
+    DATA_FRACTION = 0.1  # Use 1.0 for all data, or set to a fraction (e.g., 0.1 for 10%)
     
     # ============================================
     # MODEL SELECTION
@@ -697,7 +697,7 @@ if __name__ == "__main__":
     # 1. L2 Regularization (Weight Decay) - RECOMMENDED
     #    Adds penalty to large weights. Typical values: 1e-4 to 1e-2
     #    Start with 1e-4 and increase if still overfitting
-    WEIGHT_DECAY = 0  # L2 regularization strength
+    WEIGHT_DECAY = 1e-4  # L2 regularization strength
     
     # 2. L1 Regularization
     #    Encourages sparsity (zero weights). Typical values: 1e-5 to 1e-3
