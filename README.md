@@ -1,6 +1,6 @@
 # Alzheimer's Disease Severity Classification from MRI Images
 
-This project implements a machine learning model to predict Alzheimer's disease severity from MRI images using the OASIS dataset.
+This project implements machine learning models to predict Alzheimer's disease severity from MRI images using the OASIS dataset. It trains multiple convolutional neural networks to detect four different classes of dementia from MRI images.
 
 ## Dataset Structure
 
@@ -47,21 +47,30 @@ python train_model.py
 
 This script will:
 - Load the prepared dataset
-- Create a ResNet50-based model (pretrained on ImageNet)
-- Train the model with data augmentation
-- Save the best model as `best_model.pth`
-- Display training/validation metrics and classification report
+- Create a model (supports multiple architectures: ResNet, EfficientNet, DenseNet, VGG, MobileNet, Inception, AlexNet)
+- Train the model with data augmentation and regularization options
+- Save the best model as `best_models/best_model_{model_name}.pth`
+- Display training/validation metrics, classification report, and accuracy plots
 
 **Training Parameters:**
-- Epochs: 20
-- Batch size: 32
-- Learning rate: 0.001 (with step scheduler)
-- Optimizer: Adam
-- Loss: CrossEntropyLoss
+- Configurable epochs, batch size, and learning rate
+- Multiple model architectures available
+- Regularization options: L2 (weight decay), L1, dropout, label smoothing
+- Class weighting for handling imbalanced data
+- Patient-based and adaptive sampling options
 
 ## Model Architecture
 
-The model uses a **ResNet50** backbone pretrained on ImageNet, with the final fully connected layer replaced to output 4 classes.
+The project supports multiple architectures:
+- **ResNet**: resnet18, resnet34, resnet50, resnet101, resnet152
+- **EfficientNet**: efficientnet_b0 through efficientnet_b7
+- **DenseNet**: densenet121, densenet169, densenet201
+- **VGG**: vgg11, vgg13, vgg16, vgg19
+- **MobileNet**: mobilenet_v2, mobilenet_v3_small, mobilenet_v3_large
+- **Inception**: inception_v3
+- **AlexNet**: alexnet
+
+All models use pretrained ImageNet weights with the final layer replaced to output 4 classes.
 
 **Data Augmentation (Training only):**
 - Random horizontal flip
@@ -73,10 +82,12 @@ The model uses a **ResNet50** backbone pretrained on ImageNet, with the final fu
 ## Files
 
 - `prepare_dataset.py` - Creates train/validation split based on patient numbers
-- `train_model.py` - Trains the Alzheimer's severity classification model
-- `analyze_data.py` - Original data exploration script
+- `train_model.py` - Trains the Alzheimer's severity classification model (4-class)
+- `train_model_binary.py` - Binary classification model (demented vs non-demented)
+- `test_model.py` - Script to test trained models
+- `analyze_data.py` - Data exploration script
 - `requirements.txt` - Python dependencies
-- `best_model.pth` - Saved model weights (created after training)
+- `best_models/` - Directory containing saved model weights
 
 ## Notes
 
@@ -84,4 +95,4 @@ The model uses a **ResNet50** backbone pretrained on ImageNet, with the final fu
 - Class imbalance exists in the dataset (more "Non Demented" images than others)
 - The validation set may not contain all classes if certain patients are only in the training set
 - GPU is recommended for training but CPU will work (slower)
-
+- Model checkpoints and large datasets are excluded from git via `.gitignore`
