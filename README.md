@@ -84,7 +84,6 @@ All models use pretrained ImageNet weights with the final layer replaced to outp
 - `prepare_dataset.py` - Creates train/validation split based on patient numbers
 - `train_model.py` - Trains the Alzheimer's severity classification model (4-class)
 - `test_model.py` - Script to test trained models
-- `analyze_data.py` - Data exploration script
 - `requirements.txt` - Python dependencies
 - `best_models/` - Directory containing saved model weights
 
