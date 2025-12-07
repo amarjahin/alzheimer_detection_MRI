@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files (large binary files)
+*.pth
+*.pt
+*.h5
+*.ckpt
+best_models/
+*.pkl
+
+# Dataset (usually too large for git)
+dataset_split/
+data/
+datasets/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+
+# Plots/Figures (uncomment if you don't want to track these)
+# figures/
+# plots/
