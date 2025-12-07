@@ -1,6 +1,8 @@
 # Alzheimer's Disease Severity Classification from MRI Images
 
-This project implements machine learning models to predict Alzheimer's disease severity from MRI images using the OASIS dataset. It trains multiple convolutional neural networks to detect four different classes of dementia from MRI images.
+We implement machine learning models to predict Alzheimer's disease severity from MRI images using the OASIS dataset. It trains multiple convolutional neural networks to detect four different classes of dementia from MRI images.
+We find that most of the models tend to over fit the training data, and don't generalize very nicely. 
+We implement multiple regularization methods to the loss function to try to solve this problem. 
 
 ## Dataset Structure
 
@@ -57,7 +59,6 @@ This script will:
 - Multiple model architectures available
 - Regularization options: L2 (weight decay), L1, dropout, label smoothing
 - Class weighting for handling imbalanced data
-- Patient-based and adaptive sampling options
 
 ## Model Architecture
 
